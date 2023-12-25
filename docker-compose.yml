@@ -7,12 +7,12 @@ services:
       context: ./ #if your Dockerfile is not at the same level change the path here (./frontend)
       target: dev
     restart: always
-    command: npm run dev
+    command: sh -c "npm install && npm run dev"
     environment:
       - NODE_ENV=development
     volumes:
+      - ./node_modules:/app/node_modules:Z
       - .:/app:Z
-      - /app/node_modules:Z
       - /app/.next:Z
     ports:
       - 3000:3000
