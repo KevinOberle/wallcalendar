@@ -1,8 +1,6 @@
-"use server";
-
 import { isAuthenticated, getAccessToken } from "./auth";
 
-type Album = {
+export type Album = {
   id: string;
   title: string;
   productUrl: string;
