@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import AlbumGooglePicker from "./albumGooglePicker";
 
 export default async function Settings() {
-  const googleAuthenticated = isAuthenticated();
+  const googleAuthenticated = await isAuthenticated();
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-12">
