@@ -23,7 +23,7 @@ export async function getAlbums(): Promise<Album[] | null> {
 
   const url = new URL("https://photoslibrary.googleapis.com/v1/albums");
 
-  url.searchParams.append("pageSize", 50);
+  url.searchParams.append("pageSize", "50");
 
   await APIGet(
     url,
