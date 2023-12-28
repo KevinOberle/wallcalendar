@@ -18,6 +18,13 @@ const scopes = ["https://www.googleapis.com/auth/photoslibrary.readonly"];
 await initRefreshToken();
 
 export async function getAccessToken() {
+  //TODO: handle expired access token
+  if (
+    OAuth2Client.credentials.access_token === null ||
+    OAuth2Client.credentials.access_token === undefined
+  )
+    return null;
+
   return OAuth2Client.credentials.access_token;
 }
 
@@ -26,7 +33,7 @@ async function initRefreshToken() {
   const Key = await KeyStore.findOne({ where: { Key: KeyName } });
   if (Key === null) return;
   const RefreshToken = Key.Value;
-  console.log("Refresh Token loaded from db: " + RefreshToken);
+  console.log("Refresh Token loaded from db");
 
   OAuth2Client.setCredentials({ refresh_token: RefreshToken });
   await OAuth2Client.getAccessToken();
@@ -37,6 +44,7 @@ export async function initiateGoogleAuth() {
   const url = OAuth2Client.generateAuthUrl({
     // 'online' (default) or 'offline' (gets refresh_token)
     access_type: "offline",
+    prompt: "consent",
 
     // If you only need one scope you can pass it as a string
     scope: scopes,
@@ -71,7 +79,6 @@ OAuth2Client.on("tokens", (tokens) => {
       Value: tokens.refresh_token,
     });
   }
-  console.log("Access token Recieved");
 });
 
 export async function isAuthenticated() {
