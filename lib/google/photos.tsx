@@ -1,6 +1,11 @@
+"use server";
+
 import { json } from "stream/consumers";
 import { isAuthenticated, getAccessToken } from "./auth";
 import { error } from "console";
+import { KeyStore, MediaItem } from "@/lib/db";
+
+const KeyNameSelectedAlbum = "Service.Google.AlbumID";
 
 export type Album = {
   id: string;
@@ -11,11 +16,70 @@ export type Album = {
   mediaItemsCount: number;
 };
 
+export async function listAndStoreMediaFromAlbum() {
+  const Token = await getAccessToken();
+  const AlbumID = await getSelectedAlbum();
+
+  if (!isAuthenticated() || !Token || !AlbumID) return null;
+
+  console.log("Fetching photos list");
+
+  const url = new URL(
+    "https://photoslibrary.googleapis.com/v1/mediaItems:search"
+  );
+
+  await APIGet(
+    url,
+    async (Res) => {
+      const ResBody = await Res.json();
+      const ResMediaItems = ResBody.mediaItems;
+      console.log("Got " + ResMediaItems.length + " mediaItems");
+
+      ResMediaItems.forEach((item) => {
+        console.log(item);
+        MediaItem.upsert({
+          id: item.id,
+          albumId: AlbumID,
+          productUrl: item.productUrl,
+          baseUrl: item.baseUrl,
+          mimeType: item.mimeType,
+          filename: item.filename,
+          creationTime: item.mediaMetadata.creationTime,
+          width: item.mediaMetadata.width,
+          height: item.mediaMetadata.height,
+          photo: item.photo != undefined,
+          video: item.photo != undefined,
+        });
+      });
+    },
+    {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + Token,
+        "Content-Type": "application/json",
+      },
+      next: { revalidate: 3600 },
+      body: JSON.stringify({ pageSize: "100", albumId: AlbumID }),
+    }
+  );
+}
+
+export async function getSelectedAlbum(): Promise<string | null> {
+  const Key = await KeyStore.findOne({ where: { Key: KeyNameSelectedAlbum } });
+  if (Key === null) return null;
+  return Key.Value;
+}
+
+export async function setSelectedAlbum(value: string) {
+  KeyStore.upsert({
+    Key: KeyNameSelectedAlbum,
+    Value: value,
+  });
+}
+
 export async function getAlbums(): Promise<Album[] | null> {
   let Albums: Album[] = new Array();
   const Token = await getAccessToken();
-
-  console.log(Token);
 
   if (!isAuthenticated() || !Token) return null;
 
@@ -68,9 +132,21 @@ async function APIGet(
     //handle additional pages
     const ResBody = await res.json();
 
+    //temporary to stop following pagination during debugging
+    //return;
+
     if (ResBody.nextPageToken) {
       const newURL = new URL(url);
-      newURL.searchParams.append("pageToken", ResBody.nextPageToken);
+
+      if (!init.body) {
+        newURL.searchParams.append("pageToken", ResBody.nextPageToken);
+      } else {
+        init.body = JSON.stringify({
+          ...JSON.parse(init.body.toString()),
+          pageToken: ResBody.nextPageToken,
+        });
+      }
+
       await APIGet(
         newURL,
         SuccessfulResHandler,
@@ -83,7 +159,9 @@ async function APIGet(
     //API quota issue - delay and try again
 
     console.log(
-      "Error. Try " +
+      "Error " +
+        res.status +
+        ". Try " +
         tryCount +
         " of " +
         maxQuotaRetries +
@@ -92,9 +170,9 @@ async function APIGet(
     );
 
     if (tryCount >= maxQuotaRetries)
-      throw new Error("Maximum API requests reached");
+      throw new Error("Maximum API retries reached");
     await new Promise((resolve) =>
-      setTimeout(resolve, (0.5 + 0.5 * Math.random()) * ((3000 * 2) ^ tryCount))
+      setTimeout(resolve, (0.5 + 0.5 * Math.random()) * (3000 * (2 ^ tryCount)))
     );
     await APIGet(
       url,
@@ -102,18 +180,25 @@ async function APIGet(
       init,
       maxRetries,
       maxQuotaRetries,
-      tryCount++
+      tryCount + 1
     );
   } else if (res.status >= 400 && res.status <= 599) {
     //some error- delay and try again
 
     console.log(
-      "Error. Try " + tryCount + " of " + maxRetries + ". " + res.statusText
+      "Error " +
+        res.status +
+        ". Try " +
+        tryCount +
+        " of " +
+        maxRetries +
+        ". " +
+        res.statusText
     );
 
-    if (tryCount >= maxRetries) throw new Error("Maximum API requests reached");
+    if (tryCount >= maxRetries) throw new Error("Maximum API retries reached");
     await new Promise((resolve) =>
-      setTimeout(resolve, (0.5 + 0.5 * Math.random()) * ((300 * 2) ^ tryCount))
+      setTimeout(resolve, (0.5 + 0.5 * Math.random()) * (1500 * (2 ^ tryCount)))
     );
     await APIGet(
       url,
@@ -121,7 +206,7 @@ async function APIGet(
       init,
       maxRetries,
       maxQuotaRetries,
-      tryCount++
+      tryCount + 1
     );
   }
 }

@@ -1,17 +1,20 @@
-import { getAlbums } from "@/lib/google/photos";
+import {
+  getAlbums,
+  getSelectedAlbum,
+  setSelectedAlbum,
+  listAndStoreMediaFromAlbum,
+} from "@/lib/google/photos";
 import DropDown from "./dropDown";
-import { KeyStore } from "@/lib/db";
-
-const KeyName = "Service.Google.AlbumID";
 
 export default async function AlbumGooglePicker() {
   const Albums = await getAlbums();
-  const getDefaultValue = async (): Promise<string | null> => {
-    const Key = await KeyStore.findOne({ where: { Key: KeyName } });
-    if (Key === null) return null;
-    return Key.value;
+  const getDefaultValue = await getSelectedAlbum();
+  const DefaultValue = await getSelectedAlbum();
+  const onChange = async (value: string) => {
+    "use server";
+    await setSelectedAlbum(value);
+    listAndStoreMediaFromAlbum();
   };
-  const DefaultValue = await getDefaultValue();
 
   const Options = Albums?.map((item) => ({
     id: item["id"],
@@ -21,13 +24,7 @@ export default async function AlbumGooglePicker() {
   return (
     <DropDown
       Options={Options}
-      onChange={async (value: string) => {
-        "use server";
-        KeyStore.upsert({
-          Key: KeyName,
-          Value: value,
-        });
-      }}
+      onChange={onChange}
       DefaultValue={DefaultValue}
     />
   );
