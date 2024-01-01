@@ -18,12 +18,18 @@ const scopes = ["https://www.googleapis.com/auth/photoslibrary.readonly"];
 await initRefreshToken();
 
 export async function getAccessToken() {
-  //TODO: handle expired access token
-  if (
-    OAuth2Client.credentials.access_token === null ||
-    OAuth2Client.credentials.access_token === undefined
-  )
-    return null;
+  try {
+    await OAuth2Client.getAccessToken();
+  } catch (error) {
+    switch (error) {
+      case "Error: invalid_grant":
+        return null;
+        break;
+      default:
+        return null;
+        break;
+    }
+  }
 
   return OAuth2Client.credentials.access_token;
 }
@@ -36,7 +42,7 @@ async function initRefreshToken() {
   console.log("Refresh Token loaded from db");
 
   OAuth2Client.setCredentials({ refresh_token: RefreshToken });
-  await OAuth2Client.getAccessToken();
+  await getAccessToken();
 }
 
 //Next JS Server function - Redirect the user to google authorization page
@@ -82,26 +88,5 @@ OAuth2Client.on("tokens", (tokens) => {
 });
 
 export async function isAuthenticated() {
-  if (
-    OAuth2Client.credentials.access_token === null ||
-    OAuth2Client.credentials.access_token === undefined
-  )
-    return false;
-
-  try {
-    const tokenInfo = await OAuth2Client.getTokenInfo(
-      OAuth2Client.credentials.access_token
-    );
-  } catch {
-    await OAuth2Client.getAccessToken();
-
-    try {
-      const tokenInfo = await OAuth2Client.getTokenInfo(
-        OAuth2Client.credentials.access_token
-      );
-    } catch {
-      return false;
-    }
-  }
-  return true;
+  return !!(await getAccessToken());
 }
