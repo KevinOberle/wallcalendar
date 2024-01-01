@@ -1,8 +1,6 @@
 "use server";
 
-import { json } from "stream/consumers";
 import { isAuthenticated, getAccessToken } from "./auth";
-import { error } from "console";
 import { KeyStore, MediaItem } from "@/lib/db";
 
 const KeyNameSelectedAlbum = "Service.Google.AlbumID";
