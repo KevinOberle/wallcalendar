@@ -10,7 +10,7 @@ export default function DateTime() {
     return function cleanup() {
       clearInterval(timer);
     };
-  });
+  }, []);
 
   const displayTime =
     String(date.getHours()) + ":" + String(date.getMinutes()).padStart(2, "0");
@@ -24,8 +24,8 @@ export default function DateTime() {
 
   return (
     <div>
-      <div className="text-6xl">{displayTime}</div>
-      <div className="text-3xl">{displayDate}</div>
+      <div className="text-6xl text-base-100 drop-shadow-md">{displayTime}</div>
+      <div className="text-3xl text-base-100 drop-shadow-md">{displayDate}</div>
     </div>
   );
 }
