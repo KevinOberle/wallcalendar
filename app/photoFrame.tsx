@@ -1,6 +1,12 @@
+import { getPhotosforFrame } from "@/lib/google/photos";
+import PhotoFrameClient from "./photoFrameClient";
+import { Suspense } from "react";
+
 export default async function PhotoFrame() {
-  const images = await async function () {
-    return;
-  };
-  return <div></div>;
+  const photos = await getPhotosforFrame();
+  return (
+    <Suspense>
+      <PhotoFrameClient initPhotos={photos} />
+    </Suspense>
+  );
 }

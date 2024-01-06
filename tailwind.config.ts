@@ -13,6 +13,9 @@ const config: Config = {
         "gradient-conic":
           "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
       },
+      dropShadow: {
+        md: ["0 4px 3px rgb(0 0 0 / 0.3)", "0 2px 2px rgb(0 0 0 / 0.3)"],
+      },
     },
   },
   plugins: [require("@tailwindcss/typography"), require("daisyui")],

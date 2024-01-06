@@ -1,7 +1,7 @@
 "use server";
 
 import { isAuthenticated, getAccessToken } from "./auth";
-import { KeyStore, MediaItem } from "@/lib/db";
+import { KeyStore, MediaItem, Op } from "@/lib/db";
 
 const KeyNameSelectedAlbum = "Service.Google.AlbumID";
 
@@ -13,6 +13,67 @@ export type Album = {
   coverPhotoMediaItemId: string;
   mediaItemsCount: number;
 };
+export type Photo = {
+  id: string;
+  baseURL?: string;
+  width?: number;
+  height?: number;
+};
+
+export async function getPhotosforFrame() {
+  const PhotoIDs: { id: string }[] = await MediaItem.findAll({
+    attributes: ["id"],
+    where: {
+      albumId: await getSelectedAlbum(),
+      photo: true,
+      mimeType: { [Op.notLike]: "%gif" },
+    },
+    order: MediaItem.sequelize.random(),
+    limit: 50,
+    raw: true,
+  });
+
+  const url = new URL(
+    "https://photoslibrary.googleapis.com/v1/mediaItems:batchGet"
+  );
+  PhotoIDs.forEach((item) => url.searchParams.append("mediaItemIds", item.id));
+
+  console.log("Got " + PhotoIDs.length + " Random Photo IDs");
+
+  let Photos: Photo[];
+
+  await APIGet(
+    url,
+    async (Res) => {
+      const ResBody = await Res.json();
+      const mediaItemResults = ResBody.mediaItemResults;
+      console.log("Got " + mediaItemResults.length + " mediaItemResults");
+
+      //TODO: Finish this function::
+      Photos = mediaItemResults.map((item) => {
+        //console.log(item);
+
+        if (item.mediaItem) {
+          //https://github.com/googleapis/googleapis/blob/master/google/rpc/code.proto
+          return {
+            id: item.mediaItem.id,
+            baseURL: item.mediaItem.baseUrl,
+            width: item.mediaItem.mediaMetadata.width,
+            height: item.mediaItem.mediaMetadata.height,
+          };
+        }
+      });
+    },
+    {
+      headers: {
+        Authorization: "Bearer " + (await getAccessToken()),
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  return Photos;
+}
 
 export async function listAndStoreMediaFromAlbum() {
   const Token = await getAccessToken();
@@ -21,6 +82,9 @@ export async function listAndStoreMediaFromAlbum() {
   if (!isAuthenticated() || !Token || !AlbumID) return null;
 
   console.log("Fetching photos list");
+
+  await MediaItem.drop();
+  await MediaItem.sync();
 
   const url = new URL(
     "https://photoslibrary.googleapis.com/v1/mediaItems:search"
@@ -45,8 +109,8 @@ export async function listAndStoreMediaFromAlbum() {
           creationTime: item.mediaMetadata.creationTime,
           width: item.mediaMetadata.width,
           height: item.mediaMetadata.height,
-          photo: item.photo != undefined,
-          video: item.photo != undefined,
+          photo: item.mediaMetadata.photo != undefined,
+          video: item.mediaMetadata.video != undefined,
         });
       });
     },
@@ -121,7 +185,6 @@ async function APIGet(
   const res = await fetch(url, init);
 
   if (res.status == 200) {
-    console.log("Got Albums response");
     //console.log(await res.text());
 
     //success

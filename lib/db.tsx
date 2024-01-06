@@ -1,4 +1,4 @@
-const { Sequelize, DataTypes, Model } = require("sequelize");
+const { Sequelize, DataTypes, Model, Op } = require("sequelize");
 
 const sequelize = new Sequelize("sqlite:data.db");
 
@@ -89,4 +89,4 @@ MediaItem.init(
 
 await sequelize.sync();
 
-export { KeyStore, MediaItem };
+export { KeyStore, MediaItem, Op };
