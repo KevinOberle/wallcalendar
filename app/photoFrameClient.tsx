@@ -1,15 +1,23 @@
 "use client";
 import { getPhotosforFrame, Photo } from "@/lib/google/photos";
 import { useEffect, useRef, useState } from "react";
+import { CSSTransition, TransitionGroup } from "react-transition-group";
+import "./photoFrameClient.style.css";
 
 const width = 1920;
 const height = 1080;
-const transitionTime = 5000;
+const transitionTime = 10000;
 
-const Preload = (imageURLs: string[]) => {
-  imageURLs.forEach((url) => {
+type photoFrameElement = {
+  url: string;
+  width: number;
+  height: number;
+};
+
+const Preload = (images: photoFrameElement[]) => {
+  images.forEach((image) => {
     const photo = new Image();
-    photo.src = url;
+    photo.src = image.url;
   });
 };
 
@@ -18,9 +26,10 @@ const isLandscape = (photo: Photo) => {
 };
 
 export default function PhotoFrameClient(props: { initPhotos: Photo[] }) {
-  const [activePhotos, setActivePhotos] = useState<string[]>([]);
-  const nextPhotos = useRef<string[]>([]);
+  const [activePhotos, setActivePhotos] = useState<photoFrameElement[]>([]);
+  const nextPhotos = useRef<photoFrameElement[]>([]);
   const photosQueue = useRef(props.initPhotos);
+  const nodeRef = useRef();
 
   const CyclePhotos = () => {
     if (nextPhotos.current.length > 0) setActivePhotos([...nextPhotos.current]);
@@ -37,7 +46,7 @@ export default function PhotoFrameClient(props: { initPhotos: Photo[] }) {
 
       const url =
         photosQueue.current[0].baseURL + "=w" + width + "-h" + height + "-c";
-      nextPhotos.current = [url];
+      nextPhotos.current = [{ url: url, width: width, height: height }];
 
       //remove photo from queue
       photosQueue.current.shift();
@@ -70,7 +79,10 @@ export default function PhotoFrameClient(props: { initPhotos: Photo[] }) {
       //remove photo from queue
       photosQueue.current.splice(nextLandscapePhoto, 1);
 
-      nextPhotos.current = [url1, url2];
+      nextPhotos.current = [
+        { url: url1, width: width / 2, height: height },
+        { url: url2, width: width / 2, height: height },
+      ];
     }
 
     Preload(nextPhotos.current);
@@ -103,39 +115,28 @@ export default function PhotoFrameClient(props: { initPhotos: Photo[] }) {
     return () => clearInterval(timer);
   }, []);
 
-  switch (activePhotos.length) {
-    case 0:
-      return null;
-
-    case 1:
-      return (
-        <img
-          className="inline"
-          key={activePhotos[0]}
-          src={activePhotos[0]}
-          width={width}
-          height={height}
-        />
-      );
-
-    case 2:
-      return (
-        <>
-          <img
-            className="inline"
-            key={activePhotos[0]}
-            src={activePhotos[0]}
-            width={width / 2}
-            height={height}
-          />
-          <img
-            className="inline"
-            key={activePhotos[1]}
-            src={activePhotos[1]}
-            width={width / 2}
-            height={height}
-          />
-        </>
-      );
-  }
+  return (
+    <TransitionGroup className="photoFrame">
+      {activePhotos[0] ? (
+        <CSSTransition
+          key={activePhotos[0].url}
+          nodeRef={nodeRef}
+          timeout={2000}
+          classNames="photo"
+        >
+          <div className="absolute" key={activePhotos[0].url}>
+            {activePhotos.map((photo) => (
+              <img
+                className="inline"
+                key={photo.url}
+                src={photo.url}
+                width={photo.width}
+                height={photo.height}
+              />
+            ))}
+          </div>
+        </CSSTransition>
+      ) : null}
+    </TransitionGroup>
+  );
 }

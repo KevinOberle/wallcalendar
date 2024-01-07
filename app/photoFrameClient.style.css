@@ -1,0 +1,14 @@
+.photo-enter {
+  opacity: 0;
+}
+.photo-enter-active {
+  opacity: 1;
+  transition: opacity 2000ms ease-in;
+}
+.photo-exit {
+  opacity: 1;
+}
+.photo-exit-active {
+  opacity: 0;
+  transition: opacity 2000ms ease-in;
+}
