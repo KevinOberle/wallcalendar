@@ -6,7 +6,7 @@ const DateTime = dynamic(() => import("./dateTime"), { ssr: false });
 
 export default function Home() {
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen cursor-none">
       <div className="absolute min-h-screen min-w-full bg-neutral">
         <PhotoFrame />
       </div>
